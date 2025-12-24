@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Manage Voting Event</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body{font-family:Inter,system-ui,Arial;background:#f6f8fa;color:#0b1220;display:flex;align-items:flex-start;justify-content:center;padding:32px}
+      .card{background:white;border-radius:10px;padding:20px;max-width:720px;width:100%;box-shadow:0 10px 40px rgba(11,20,32,0.06)}
+      label{display:block;margin-top:12px;font-weight:600;color:#374151}
+      input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(11,20,32,0.06);margin-top:6px}
+      .row{display:flex;gap:8px;margin-top:12px}
+      button{padding:10px 14px;border-radius:8px;border:0;background:#0b1220;color:white;cursor:pointer}
+      .muted{color:#6b7280;margin-top:10px}
+      .small{font-size:13px}
+      .link{background:transparent;border:1px solid rgba(11,20,32,0.06);color:#0b1220}
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Voting Event Management</h2>
+      <div class="muted small">Set the active voting window. Users may only access the voting page during this period.</div>
+      <label>Voting Start (local)</label>
+      <input id="start" type="datetime-local" />
+      <label>Voting End (local)</label>
+      <input id="end" type="datetime-local" />
+      <label>Contract Address (optional)</label>
+      <input id="contract" placeholder="0x..." />
+      <div class="row">
+        <button id="publish">Publish Voting Window</button>
+        <button id="clear" class="link">Clear Window</button>
+        <button id="back" class="link">Back to UI</button>
+      </div>
+      <div id="info" class="muted small"></div>
+    </div>
+
+    <script>
+      // lightweight validation/toast (non-blocking)
+      const _valEl = (()=>{
+        const el = document.createElement('div'); el.id='validation'; el.style.position='fixed'; el.style.top='18px'; el.style.right='18px'; el.style.minWidth='220px'; el.style.padding='10px 14px'; el.style.borderRadius='8px'; el.style.background='#0b1220'; el.style.color='white'; el.style.boxShadow='0 8px 30px rgba(11,18,28,0.2)'; el.style.opacity='0'; el.style.transition='opacity .24s ease, transform .24s ease'; el.style.transform='translateY(-6px)'; document.body.appendChild(el); const bar = document.createElement('div'); bar.style.height='4px'; bar.style.background='rgba(255,255,255,0.9)'; bar.style.width='0%'; bar.style.position='absolute'; bar.style.left='0'; bar.style.right='0'; bar.style.bottom='0'; el.appendChild(bar); return {el,bar}; })();
+      let _valTimer=null;
+      function showValidation(msg, type='info', timeout=1800){
+        if (_valTimer){ clearTimeout(_valTimer); _valTimer=null; }
+        _valEl.el.textContent = msg;
+        _valEl.el.style.background = (type==='error' ? '#ef4444' : (type==='warn' ? '#f59e0b' : '#0b1220'));
+        _valEl.bar.style.width = '0%';
+        _valEl.el.style.opacity = '1'; _valEl.el.style.transform='translateY(0)';
+        // animate progress
+        setTimeout(()=>{ _valEl.bar.style.transition = `width ${timeout}ms linear`; _valEl.bar.style.width = '100%'; },30);
+        if (timeout>0) _valTimer = setTimeout(()=>{ _valEl.el.style.opacity='0'; _valEl.el.style.transform='translateY(-6px)'; _valTimer=null; }, timeout+300);
+      }
+      const startEl = document.getElementById('start');
+      const endEl = document.getElementById('end');
+      const contractEl = document.getElementById('contract');
+      const info = document.getElementById('info');
+
+      function readWindow(){
+        try{ const j = JSON.parse(localStorage.getItem('votingWindow')||'null'); return j; }catch(e){return null}
+      }
+      function renderInfo(){
+        const w = readWindow();
+        if (!w) { info.textContent = 'No active voting window is published.'; return; }
+        const s = new Date(w.start); const e = new Date(w.end);
+        info.textContent = `Active window: ${s.toLocaleString()} → ${e.toLocaleString()}`;
+        if (w.contract) contractEl.value = w.contract;
+        startEl.value = w.start ? new Date(w.start).toISOString().slice(0,16) : '';
+        endEl.value = w.end ? new Date(w.end).toISOString().slice(0,16) : '';
+      }
+      renderInfo();
+
+      document.getElementById('publish').onclick = ()=>{
+        const s = startEl.value; const e = endEl.value; const c = contractEl.value.trim();
+        if (!s || !e) { showValidation('Please set both start and end', 'error'); return; }
+        const start = new Date(s); const end = new Date(e);
+        if (start >= end) { showValidation('Start must be before end', 'error'); return; }
+        const j = { start: start.toISOString(), end: end.toISOString(), contract: c || null };
+        localStorage.setItem('votingWindow', JSON.stringify(j));
+        showValidation('Voting window published', 'info', 1200);
+        setTimeout(()=> window.location.href = './index.html', 900);
+      };
+      document.getElementById('clear').onclick = ()=>{
+        localStorage.removeItem('votingWindow');
+        showValidation('Voting window cleared', 'info', 1200);
+        renderInfo();
+      };
+      document.getElementById('back').onclick = ()=>{ window.location.href = './index.html'; };
+    </script>
+  </body>
+</html>

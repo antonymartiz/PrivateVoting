@@ -1,0 +1,1080 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Private Voting Demo — UI</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      :root{
+        /* slightly lighter dark theme */
+        --bg:#0b1b2a; --card:#0f2130; --muted:#9fb0bf; --accent:#7c3aed; --accent-2:#06b6d4; --glass:rgba(255,255,255,0.06);
+        --text:#eef6fb; --success:#10b981; --danger:#ef4444; --code-bg:#07182b;
+      }
+      /* dark theme enabled */
+
+      html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;position:relative}
+      /* animated background removed */
+      .container{position:relative;z-index:1;max-width:1400px;margin:20px auto;padding:16px}
+      .container{max-width:1400px;margin:28px auto;padding:24px}
+      header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+      .brand{display:flex;gap:12px;align-items:center}
+      .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+      h1{color:var(--text);margin:0;font-size:18px}
+      .subtitle{color:var(--muted);font-size:13px}
+
+      main{display:grid;grid-template-columns:1fr 1fr;gap:32px;min-height:calc(100vh - 160px);align-items:stretch;padding:8px}
+      .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(2,6,23,0.45);color:var(--text);display:flex;flex-direction:column;justify-content:flex-start;min-height:0;height:100%;margin:14px}
+
+      .section-title{font-weight:600;margin-bottom:8px}
+      .muted{color:var(--muted);font-size:13px}
+      input,select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--text);transition:border-color .18s ease,box-shadow .18s ease}
+      input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(124,58,237,0.9);box-shadow:0 6px 20px rgba(124,58,237,0.06)}
+      /* light-theme focus styles removed */
+      .row{display:flex;gap:8px;align-items:center}
+      button{padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:600;cursor:pointer;transition:transform .15s ease, box-shadow .15s ease, opacity .12s ease, background .28s ease, color .28s ease}
+      /* primary button smooth hover color (exclude choice buttons) */
+      button:not(.choice-btn):not(.ghost):hover{background:linear-gradient(90deg,rgba(124,58,237,0.96),rgba(6,182,212,0.96));color:white}
+      /* light-theme button rules removed */
+      button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+
+      .small{font-size:13px}
+      .logs{flex:1;min-height:0;overflow:auto;background:var(--code-bg);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);font-family:monospace;color:var(--muted);white-space:pre;word-break:normal}
+      /* Material-like scrollbar */
+      /* allow horizontal scroll when content is wide */
+      .logs, .tx-list, .pubkey-textarea{scrollbar-width:thin;scrollbar-color:rgba(124,58,237,0.6) rgba(255,255,255,0.03)}
+      .tx-list{overflow:auto;white-space:pre}
+      .logs::-webkit-scrollbar, .tx-list::-webkit-scrollbar, .pubkey-textarea::-webkit-scrollbar{height:10px;width:10px}
+      .logs::-webkit-scrollbar-track, .tx-list::-webkit-scrollbar-track, .pubkey-textarea::-webkit-scrollbar-track{background:transparent;border-radius:8px}
+      .logs::-webkit-scrollbar-thumb, .tx-list::-webkit-scrollbar-thumb, .pubkey-textarea::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(124,58,237,0.6),rgba(6,182,212,0.6));border-radius:8px}
+      .logs::-webkit-scrollbar-thumb:hover, .tx-list::-webkit-scrollbar-thumb:hover, .pubkey-textarea::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(124,58,237,0.8),rgba(6,182,212,0.8))}
+      /* Icon prefixes for logs/tx */
+      /* notification entry styles (no icon) */
+      .log-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:8px;font-family:monospace;background:rgba(255,255,255,0.02);color:var(--muted);border-left:4px solid rgba(255,255,255,0.04)}
+      .log-entry .msg{flex:1;margin-right:12px}
+      .log-entry .time{flex:0 0 auto;color:var(--muted);font-size:12px}
+
+      /* Fade-in animation for inserted logs/tx entries */
+      @keyframes fadeInUp { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+      .log-entry.fade-in, .tx.fade-in { animation: fadeInUp 360ms cubic-bezier(.2,.9,.2,1) both; }
+
+      .controls{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+      .inline{display:flex;gap:8px}
+      .info-pill{background:var(--glass);padding:6px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+
+      .tx-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+      .tx{display:flex;justify-content:space-between;padding:10px;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+
+      .theme-toggle{display:flex;gap:8px;align-items:center}
+
+      @media (max-width:900px){main{grid-template-columns:1fr;}}
+      /* Validation alert (replaces window.alert usage) */
+      .validation{position:fixed;top:18px;right:18px;z-index:1200;min-width:240px;max-width:420px;padding:10px 14px;border-radius:10px;color:var(--text);box-shadow:0 6px 24px rgba(2,6,23,0.5);font-weight:600;opacity:0;transform:translateY(-8px);transition:opacity .28s ease,transform .28s ease}
+      .validation.info{background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+      .validation.error{background:var(--danger);}
+      .validation.show{opacity:1;transform:translateY(0)}
+      /* single-line notification with ellipsis for overflow; full text available in title */
+      .validation .msg{display:block;padding-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 36px);cursor:help}
+      .validation .progress{position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:0 0 8px 8px;background:rgba(255,255,255,0.12);overflow:hidden}
+      .validation .progress > i{display:block;height:100%;width:0%;background:rgba(255,255,255,0.95);transition:width linear}
+
+      /* Light-toastr style for validation in light theme */
+      /* light-theme validation styles removed */
+
+      /* Button animations & loading */
+      button{transition:transform .15s ease, box-shadow .15s ease, opacity .12s ease}
+      button:hover{transform:translateY(-3px);box-shadow:0 8px 30px rgba(0,0,0,0.25)}
+      button:active{transform:translateY(0) scale(.99)}
+      button.loading{cursor:default;opacity:.95}
+      .spinner{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,0.18);border-top-color:rgba(255,255,255,0.95);margin-right:8px;vertical-align:middle;animation:spin .9s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+
+      /* Steps / progress */
+      .steps{display:flex;gap:88px;margin-top:6px;align-items:center;justify-content:center}
+      .step{display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:transparent;color:var(--muted);font-weight:700;border:0;position:relative;min-width:120px}
+      .step .step-bullet{width:52px;height:52px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--muted);font-size:16px;font-weight:800;border:2px solid rgba(255,255,255,0.06);transition:transform .24s cubic-bezier(.2,.9,.2,1),box-shadow .24s ease,border-color .2s ease,opacity .2s ease}
+      .step .step-bullet.animate{transform:scale(1.06)}
+      .step .step-text{display:block;margin-top:6px;font-size:13px;color:var(--muted)}
+      /* visual states: only border color and opacity change */
+      .step.active .step-bullet{background:transparent;color:var(--text);border-color:rgba(124,58,237,0.95);opacity:1}
+      .step.done .step-bullet{background:transparent;color:var(--text);border-color:rgba(16,185,129,0.95);opacity:1}
+
+      /* connectors between steps */
+      /* connector line between centers of adjacent steps */
+      /* hide CSS pseudo connectors — SVG draws connectors instead */
+      .step:not(:last-child)::after{display:none}
+      .step.active:not(:last-child)::after{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+      .step.done:not(:last-child)::after{background:linear-gradient(90deg,var(--success),#10b98133)}
+
+      /* small span markers along connector to add visual rhythm */
+      .step:not(:last-child)::before{display:none}
+      .step.active:not(:last-child)::before{display:none}
+      .step.done:not(:last-child)::before{display:none}
+
+      /* Transaction list styling */
+      .tx-list{display:flex;flex-direction:column;gap:10px;margin-top:12px;overflow:auto;white-space:pre}
+      .tx{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.02);transition:transform .12s ease,box-shadow .12s ease}
+      .tx .left{display:flex;align-items:center;gap:10px}
+      .tx:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(2,6,23,0.45)}
+      .tx.info{border-left:4px solid rgba(6,182,212,0.9)}
+      .tx.success{border-left:4px solid rgba(16,185,129,0.9)}
+      .tx.error{border-left:4px solid rgba(239,68,68,0.9)}
+      .tx.warn{border-left:4px solid rgba(234,179,8,0.9)}
+      .tx .left{display:flex;flex-direction:column}
+      .tx .label{font-weight:700}
+      .tx .hash{color:var(--muted);font-family:monospace;font-size:12px}
+      .tx .actions{display:flex;gap:8px;align-items:center}
+      .tx .chip{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.02);font-size:12px;color:var(--muted)}
+
+      /* Choice toggle styling */
+      .choice-wrap{margin-top:6px}
+      .choice-toggle{display:inline-flex;border-radius:999px;background:rgba(255,255,255,0.02);padding:6px;gap:6px;position:relative}
+      .choice-toggle .choice-indicator{position:absolute;left:4px;top:4px;height:calc(100% - 12px);border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:transform .28s cubic-bezier(.2,.9,.2,1),width .2s cubic-bezier(.2,.9,.2,1);box-shadow:0 8px 30px rgba(124,58,237,0.12);z-index:0}
+      .choice-btn{padding:8px 14px;border-radius:999px;border:0;background:transparent;color:var(--muted);font-weight:700;cursor:pointer;transition:transform .12s ease,color .18s ease;position:relative;z-index:1}
+      .choice-btn:hover{transform:translateY(-2px)}
+      .choice-btn.active{color:white}
+  /* Log / notification entries type variants */
+  .log-entry.info{border-left-color:rgba(6,182,212,0.9);background:linear-gradient(180deg,rgba(6,182,212,0.03),transparent);color:var(--text)}
+  .log-entry.success{border-left-color:rgba(16,185,129,0.9);background:linear-gradient(180deg,rgba(16,185,129,0.03),transparent);color:var(--text)}
+  .log-entry.warn{border-left-color:rgba(234,179,8,0.9);background:linear-gradient(180deg,rgba(234,179,8,0.03),transparent);color:var(--text)}
+  .log-entry.error{border-left-color:rgba(239,68,68,0.9);background:linear-gradient(180deg,rgba(239,68,68,0.03),transparent);color:var(--text)}
+
+      /* Contract input with 0x mask */
+      .addr-wrap{display:flex;align-items:center;gap:8px}
+      .addr-prefix{padding:10px 12px;border-radius:8px;background:rgba(255,255,255,0.02);color:var(--muted);border:1px solid rgba(255,255,255,0.02);font-family:monospace}
+      .addr-input{flex:1}
+
+      /* Public key textarea */
+      .pubkey-textarea{background:var(--glass);border:1px solid rgba(0,0,0,0.06);color:var(--text);padding:8px;border-radius:8px;font-family:monospace;resize:vertical;min-height:0;margin-bottom:12px;margin-right:16px;box-sizing:border-box}
+
+      /* light-theme input/step outlines removed */
+
+      /* Steps card centering */
+      .steps-card{display:flex;align-items:center;justify-content:center;min-height:64px;height:auto;padding:12px}
+      .steps-card .steps{margin-top:0}
+      /* Role selection overlay */
+      .role-overlay{position:fixed;inset:0;background:linear-gradient(180deg,rgba(2,6,23,0.6),rgba(2,6,23,0.6));display:flex;align-items:center;justify-content:center;z-index:2000}
+      .role-card{background:var(--card);padding:26px;border-radius:12px;min-width:320px;max-width:520px;text-align:center;color:var(--text);box-shadow:0 12px 40px rgba(2,6,23,0.6)}
+      .role-card h2{margin:0 0 8px}
+      .role-actions{display:flex;gap:12px;justify-content:center;margin-top:12px}
+      .role-actions button{flex:1;padding:12px 16px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700}
+      .role-actions button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="role-overlay" id="roleOverlay" aria-hidden="false">
+        <div class="role-card">
+          <h2>Enter as</h2>
+          <p class="muted small">Select your role to continue</p>
+          <div class="role-actions">
+            <button id="asOrganizer">Organizer — Voting Management</button>
+            <button id="asParticipant" class="ghost">Participant — Voting Page</button>
+          </div>
+        </div>
+      </div>
+      <header>
+        <div class="brand">
+          <div class="logo">PV</div>
+          <div>
+            <h1>Private Voting — Demo</h1>
+            <div class="subtitle">Encrypt locally • store ciphertexts on-chain • decrypt final tally off-chain</div>
+          </div>
+        </div>
+        <div class="theme-toggle">
+          <div class="info-pill" id="nodeStatus">Node: disconnected</div>
+        </div>
+        </div>
+      </header>
+
+      <main>
+        <div class="card steps-card" style="grid-column:1/-1;position:relative">
+          <div class="steps" id="steps" style="position:relative;z-index:1">
+            <div class="step" data-index="1"><div class="step-bullet">1</div><div class="step-text">Connect</div></div>
+            <div class="step" data-index="2"><div class="step-bullet">2</div><div class="step-text">Fetch Key</div></div>
+            <div class="step" data-index="3"><div class="step-bullet">3</div><div class="step-text">Encrypt</div></div>
+            <div class="step" data-index="4"><div class="step-bullet">4</div><div class="step-text">Submit</div></div>
+            
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title">Wallet</div>
+          <div class="controls">
+            <div class="inline">
+              <button id="connect">Connect Wallet</button>
+              <div class="info-pill" id="addr">Not connected</div>
+            </div>
+
+            <div>
+              <label class="small">Contract Address</label>
+              <div class="addr-wrap">
+                <div class="addr-prefix">0x</div>
+                <input id="contract" class="addr-input" placeholder="Enter contract hex (without 0x)" />
+              </div>
+            </div>
+
+            <div>
+              <label class="small">Choice</label>
+              <div class="choice-wrap">
+                <input id="choice" type="hidden" value="for" />
+                <div class="choice-toggle" role="tablist" aria-label="Choice">
+                  <button class="choice-btn active" data-value="for">For</button>
+                  <button class="choice-btn" data-value="against">Against</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="windowStatus" style="margin-top:10px;color:var(--muted);font-size:13px"></div>
+
+              <div style="display:flex;gap:8px;align-items:center">
+                <input id="backendUrl" placeholder="Backend URL (default: same origin)" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)" />
+              </div>
+
+              <div class="inline">
+                <button id="vote" disabled>Encrypt & Submit</button>
+                <button id="fetchKey" class="ghost">Fetch Public Key</button>
+                <button id="finalize" class="ghost">Finalize Tally</button>
+                <button id="forceSend" class="ghost" style="display:none;margin-left:8px">Force Send</button>
+              </div>
+              
+
+              <div class="pubkey-wrap" style="display:flex;flex-direction:column;flex:1;min-height:0;margin-top:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <div class="small muted">Public Key:</div>
+                </div>
+                <textarea id="pubkey" class="pubkey-textarea" readonly rows="4" style="flex:1;min-height:0;max-height:none;width:calc(100% - 16px)"></textarea>
+              </div>
+
+            <!-- steps moved to full-width card above -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Activity & Logs</div>
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <div class="muted small">Realtime logs and transaction list</div>
+            <div class="inline">
+              <button id="clearLogs" class="ghost">Clear</button>
+            </div>
+          </div>
+
+          <div class="logs" id="logs">Ready.
+          </div>
+
+          <div class="tx-list" id="txList"></div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module">
+      import { ethers } from 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.esm.min.js';
+
+      // Voting window gating removed; role selection overlay controls navigation
+
+      // --- Lightweight Paillier public-key encryption (browser) ---
+      function modPow(base, exponent, modulus) {
+        if (modulus === 1n) return 0n;
+        let result = 1n;
+        base = base % modulus;
+        let e = exponent;
+        while (e > 0n) {
+          if (e & 1n) result = (result * base) % modulus;
+          e = e >> 1n;
+          base = (base * base) % modulus;
+        }
+        return result;
+      }
+
+      function randomBigInt(n) {
+        const bits = n.toString(2).length;
+        const bytes = Math.ceil(bits / 8);
+        const buf = new Uint8Array(bytes);
+        crypto.getRandomValues(buf);
+        let r = 0n;
+        for (let i = 0; i < buf.length; i++) r = (r << 8n) + BigInt(buf[i]);
+        // reduce into [1, n-1]
+        r = (r % (n - 1n)) + 1n;
+        return r;
+      }
+
+      // publicKey: { n, g, _n2 }
+      function paillierEncrypt(publicKey, m) {
+        const n = BigInt(publicKey.n);
+        const g = BigInt(publicKey.g);
+        const n2 = BigInt(publicKey._n2);
+        const r = randomBigInt(n);
+        const gm = modPow(g, m, n2);
+        const rn = modPow(r, n, n2);
+        return (gm * rn) % n2;
+      }
+
+      const connectBtn = document.getElementById('connect');
+      const addrEl = document.getElementById('addr');
+      const voteBtn = document.getElementById('vote');
+      const logsEl = document.getElementById('logs');
+      const contractInput = document.getElementById('contract');
+      const fetchKeyBtn = document.getElementById('fetchKey');
+      const pubkeyEl = document.getElementById('pubkey');
+      const backendUrlInput = document.getElementById('backendUrl');
+      const txList = document.getElementById('txList');
+      const clearLogsBtn = document.getElementById('clearLogs');
+      
+      const nodeStatus = document.getElementById('nodeStatus');
+      const forceSendBtn = document.getElementById('forceSend');
+      const windowStatusEl = document.getElementById('windowStatus');
+      // theme removed
+      const finalizeBtn = document.getElementById('finalize');
+
+      function log(...args){
+        // usage: log('message', details...) -> info by default
+        const txt = args.map(a => (typeof a==='object'?JSON.stringify(a):String(a))).join(' ');
+        addLog(txt, 'info');
+      }
+      
+      function addLog(text, type='info'){
+        try{
+          const el = document.createElement('div'); el.className = 'log-entry ' + (type||'info');
+          const time = new Date().toLocaleTimeString();
+          el.innerHTML = `<div class="msg">${String(text)}</div><div class="time">${time}</div>`;
+          // insert but animate fade-in
+          logsEl.prepend(el);
+          // trigger CSS animation on next frame
+          requestAnimationFrame(()=> el.classList.add('fade-in'));
+          logsEl.scrollTop = 0;
+        }catch(e){ console.error(e); if(logsEl) logsEl.textContent += '\n'+text; }
+      }
+      function addTx(tx){
+        const type = (tx && tx.type) ? tx.type : 'info';
+        const el = document.createElement('div'); el.className = 'tx ' + (type==='warn'? 'warn' : type);
+        const time = new Date().toLocaleTimeString();
+        const body = `<div class="left"><div><div class="label">${tx.label}</div><div class="hash">${tx.hash || (tx.msg||'')}</div></div></div>`;
+        const safeText = (tx.hash||tx.msg||'').replace(/'/g, "\\'");
+        const actions = `<div class="actions"><div class="chip">${(tx.hash||'').slice(0,10) || tx.type}</div><button class="ghost" onclick="(e=>{navigator.clipboard.writeText('${safeText}').then(()=>{e.target.textContent='Copied';setTimeout(()=>e.target.textContent='Copy',1200)})})(event)">Copy</button></div>`;
+        el.innerHTML = body + actions + `<div class="time small muted" style="margin-left:12px">${time}</div>`;
+        txList.prepend(el);
+        requestAnimationFrame(()=> el.classList.add('fade-in'));
+      }
+
+      // animated background removed
+
+          // Role overlay wiring: Organizer -> management page, Participant -> voting page
+          try{
+            const overlay = document.getElementById('roleOverlay');
+            const asOrg = document.getElementById('asOrganizer');
+            const asPar = document.getElementById('asParticipant');
+            if (overlay && asOrg && asPar) {
+              // if user already chose a role in this session, hide overlay
+              if (sessionStorage.getItem('roleChosen')) overlay.style.display = 'none';
+              // Organizer should go to management (manage.html)
+              asOrg.addEventListener('click', ()=>{ sessionStorage.setItem('roleChosen','organizer'); window.location.href = './manage.html'; });
+              // Participant stays on voting page
+              asPar.addEventListener('click', ()=>{ sessionStorage.setItem('roleChosen','participant'); overlay.style.display = 'none'; });
+            }
+          }catch(e){}
+
+      let provider, signer, address;
+      let _connecting = false;
+
+      async function detectNode(){ try{ const p = new ethers.providers.JsonRpcProvider('http://127.0.0.1:8545'); await p.getBlockNumber(); nodeStatus.textContent='Node: reachable'; }catch(e){ nodeStatus.textContent='Node: disconnected'; }}
+      detectNode();
+
+      // theme controls removed
+
+      // --- Validation helpers ---
+      // Small UI-based validation alert to replace blocking `alert()` calls
+      const validationEl = (() => {
+        const el = document.createElement('div'); el.id = 'validation-alert'; el.className = 'validation error'; el.style.display = 'none';
+        const msg = document.createElement('span'); msg.className = 'msg'; el.appendChild(msg);
+        const progress = document.createElement('div'); progress.className = 'progress'; const bar = document.createElement('i'); progress.appendChild(bar); el.appendChild(progress);
+        document.body.appendChild(el);
+        return { el, msg, bar, progress };
+      })();
+      let _validationTimer = null;
+      let _fadeTimer = null;
+      function showValidation(text, type = 'error', timeout = 2000) {
+        if (!validationEl) { console.warn(text); return; }
+        // also record validation messages in the logs
+        try { addLog(String(text), type === 'info' ? 'info' : 'error'); } catch(e) {}
+        // clear existing timers
+        if (_validationTimer) { clearTimeout(_validationTimer); _validationTimer = null; }
+        if (_fadeTimer) { clearTimeout(_fadeTimer); _fadeTimer = null; }
+        validationEl.el.className = 'validation ' + (type === 'info' ? 'info' : 'error');
+        // Show notification as a single-line and truncate overflow; put full text into title for hover
+        const fullText = String(text);
+        // replace newlines/tall whitespace with single spaces so the notification remains one line
+        const singleLine = fullText.replace(/\s+/g, ' ');
+        validationEl.msg.textContent = singleLine;
+        // keep the full message accessible as a tooltip/title and in logs
+        validationEl.msg.title = fullText;
+        try { validationEl.el.title = fullText; } catch(e) {}
+        validationEl.el.style.display = 'block';
+        // force reflow, then show (triggers CSS transition)
+        void validationEl.el.offsetWidth;
+        validationEl.el.classList.add('show');
+        // reset progress bar and animate width
+        validationEl.bar.style.transition = 'none';
+        validationEl.bar.style.width = '0%';
+        setTimeout(() => {
+          validationEl.bar.style.transition = `width ${Math.max(0, timeout)}ms linear`;
+          validationEl.bar.style.width = '100%';
+        }, 30);
+        if (timeout && timeout > 0) {
+          _validationTimer = setTimeout(() => {
+            validationEl.el.classList.remove('show');
+            _fadeTimer = setTimeout(() => {
+              validationEl.el.style.display = 'none';
+              validationEl.bar.style.transition = 'none';
+              validationEl.bar.style.width = '0%';
+              _validationTimer = null; _fadeTimer = null;
+            }, 320);
+          }, timeout);
+        }
+      }
+      function isHexAddress(a) {
+        try {
+          return Boolean(ethers && ethers.utils && ethers.utils.isAddress(String(a || '')));
+        } catch(e) {
+          return typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
+        }
+      }
+
+      // Contract address helpers (input shows only the hex without '0x')
+      function getFullContractAddress() {
+        const raw = (contractInput.value || '').trim();
+        if (!raw) return '';
+        if (raw.startsWith('0x') || raw.startsWith('0X')) return raw;
+        return '0x' + raw;
+      }
+      function setContractInputFromFull(full) {
+        if (!full) { contractInput.value = ''; return; }
+        if (full.startsWith('0x') || full.startsWith('0X')) contractInput.value = full.slice(2);
+        else contractInput.value = full;
+      }
+
+      function validateBeforeSubmit() {
+        const contractAddr = getFullContractAddress();
+        if (!isHexAddress(contractAddr)) { showValidation('Enter a valid contract address (0x...)'); return false; }
+        if (!window.__PUBLIC_KEY) { showValidation('Fetch public key first'); return false; }
+        if (!signer) { showValidation('Connect wallet first'); return false; }
+        return true;
+      }
+
+      // Button loading helper and step tracker
+      function setLoading(btn, isLoading, text) {
+        if (!btn) return;
+        if (isLoading) {
+          btn.classList.add('loading');
+          btn.disabled = true;
+          btn.dataset._orig = btn.innerHTML;
+          const label = text || btn.textContent || '';
+          btn.innerHTML = `<span class="spinner" aria-hidden></span><span class="btn-text">${label}</span>`;
+        } else {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+          if (btn.dataset._orig) { btn.innerHTML = btn.dataset._orig; delete btn.dataset._orig; }
+        }
+      }
+
+      function drawStepLines(){
+        try{
+          const svg = document.querySelector('.steps-lines');
+          const container = document.querySelector('.steps');
+          if (!svg || !container) return;
+          // clear existing
+          while(svg.firstChild) svg.removeChild(svg.firstChild);
+          const bullets = Array.from(container.querySelectorAll('.step .step-bullet'));
+          if (bullets.length < 2) return;
+          const crect = container.getBoundingClientRect();
+          svg.setAttribute('viewBox', `0 0 ${crect.width} ${crect.height}`);
+          svg.setAttribute('width', crect.width);
+          svg.setAttribute('height', crect.height);
+          bullets.forEach((b, i) => {
+            if (i === bullets.length - 1) return;
+            const a = b.getBoundingClientRect();
+            const c = bullets[i+1].getBoundingClientRect();
+            const x1 = a.left + a.width/2 - crect.left;
+            const y1 = a.top + a.height/2 - crect.top;
+            const x2 = c.left + c.width/2 - crect.left;
+            const y2 = c.top + c.height/2 - crect.top;
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('stroke-linecap','round');
+            line.setAttribute('stroke-width','4');
+            // determine color based on step states
+            const currStep = bullets[i].closest('.step');
+            const nextStep = bullets[i+1].closest('.step');
+            let stroke = 'rgba(255,255,255,0.06)';
+            if ((currStep && currStep.classList.contains('active')) || (nextStep && nextStep.classList.contains('active'))) stroke = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#7c3aed';
+            if ((currStep && currStep.classList.contains('done')) && (nextStep && nextStep.classList.contains('done'))) stroke = getComputedStyle(document.documentElement).getPropertyValue('--success') || '#10b981';
+            line.setAttribute('stroke', stroke.trim());
+            // animate draw: set dash and animate via CSS class
+            const len = Math.hypot(x2-x1, y2-y1);
+            line.setAttribute('stroke-dasharray', len);
+            line.setAttribute('stroke-dashoffset', len);
+            line.style.transition = 'stroke-dashoffset 480ms ease, stroke 320ms ease, opacity 320ms ease';
+            svg.appendChild(line);
+            // trigger draw
+            requestAnimationFrame(()=>{ line.setAttribute('stroke-dashoffset', '0'); });
+          });
+        }catch(e){/*ignore*/}
+      }
+
+      function canActivateStep(idx){
+        try{
+          const i = Number(idx);
+          if (isNaN(i) || i <= 1) return true;
+          for(let j=1;j<i;j++){
+            const prev = document.querySelector(`.step[data-index="${j}"]`);
+            if (!prev) continue;
+            if (!prev.classList.contains('done')) return false;
+          }
+          return true;
+        }catch(e){return true}
+      }
+
+      function setStep(idx, state) {
+        try {
+          // guard: activating a step requires previous steps done
+          if (state === 'active' && !canActivateStep(idx)){
+            showValidation('Please complete previous steps first','info',2000);
+            return;
+          }
+          const el = document.querySelector(`.step[data-index="${idx}"]`);
+          if (!el) return;
+          el.classList.remove('active','done');
+          if (state === 'active') el.classList.add('active');
+          if (state === 'done') el.classList.add('done');
+        } catch(e) { /* ignore */ } finally { try{ drawStepLines(); }catch(e){}
+          // briefly animate the bullet
+          try{
+            const b = document.querySelector(`.step[data-index="${idx}"] .step-bullet`);
+            if (b){ b.classList.add('animate'); setTimeout(()=>b.classList.remove('animate'), 420); }
+          }catch(e){}
+        }
+      }
+
+      function resetSteps(){
+        try{
+          const els = document.querySelectorAll('.step');
+          els.forEach(e => e.classList.remove('active','done'));
+          setStep(1,'active');
+        }catch(e){}
+      }
+
+      // initialize step 1 as waiting
+      setStep(1,'active');
+      // draw connectors after initial layout
+      setTimeout(()=>{ try{ drawStepLines(); }catch(e){} }, 80);
+      window.addEventListener('resize', ()=>{ try{ drawStepLines(); }catch(e){} });
+      // clicking a step attempts to activate it — activation will be blocked
+      // unless previous steps are completed (see canActivateStep)
+      try{
+        document.querySelectorAll('.step').forEach(s => s.addEventListener('click', (e) => {
+          const idx = s.getAttribute('data-index');
+          if (!idx) return;
+          setStep(idx, 'active');
+        }));
+      }catch(e){}
+
+      async function isContractAddress(addr) {
+        try {
+          if (!provider) return false;
+          const code = await provider.getCode(addr);
+          return code && code !== '0x' && code !== '0x0';
+        } catch (e) {
+          return false;
+        }
+      }
+
+      connectBtn.onclick = async ()=>{
+        // If already in connecting mode, treat click as cancel
+        if (_connecting) {
+          _connecting = false;
+          setLoading(connectBtn, false);
+          try { addLog('User cancelled connection', 'warn'); } catch(e){}
+          showValidation('Connection cancelled', 'info', 1500);
+          resetSteps();
+          return;
+        }
+        if (!window.ethereum) { showValidation('Install MetaMask'); return; }
+        _connecting = true;
+        setLoading(connectBtn, true, 'Connecting...');
+
+        // Hover text toggles to 'Stop connection' while connecting
+        const onEnter = ()=>{ try{ const t = connectBtn.querySelector('.btn-text'); if(t && _connecting) t.textContent = 'Stop connection'; }catch(e){} };
+        const onLeave = ()=>{ try{ const t = connectBtn.querySelector('.btn-text'); if(t && _connecting) t.textContent = 'Connecting...'; }catch(e){} };
+        connectBtn.addEventListener('mouseenter', onEnter);
+        connectBtn.addEventListener('mouseleave', onLeave);
+
+        try{
+          // Ensure MetaMask is on Sepolia; request a chain switch before connecting
+          if (window.ethereum.request) {
+            try {
+              await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0xAA36A7' }] });
+              log('Requested MetaMask to switch to Sepolia');
+            } catch (switchErr) {
+              // 4902 indicates the chain has not been added to MetaMask
+              if (switchErr && switchErr.code === 4902) {
+                showValidation('Sepolia network is not available in MetaMask. Please add Sepolia and try again.', 'info');
+                setLoading(connectBtn, false);
+                _connecting = false;
+                return;
+              }
+              // otherwise ignore and let user manually switch
+              log('Could not auto-switch network:', switchErr && switchErr.message ? switchErr.message : switchErr);
+            }
+          }
+
+          // Use the provider request API so user cancellation is surfaced
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          if (!accounts || accounts.length === 0) {
+            log('No account selected');
+            // user dismissed the wallet prompt without selecting an account
+            throw new Error('No account selected');
+          }
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          signer = provider.getSigner();
+          address = accounts[0];
+          addrEl.textContent = address;
+          log('Connected', address);
+          // advance stepper: mark 'Connect' done and 'Fetch Key' active
+          try { setStep(1,'done'); setStep(2,'active'); } catch(e){}
+        } catch(e){
+          if (e && e.code === 4001) {
+            // user explicitly rejected via wallet UI
+            log('User rejected connection');
+            resetSteps();
+          } else if (e && e.message && e.message.indexOf('No account selected') >= 0) {
+            // user dismissed the popup
+            log('User dismissed wallet prompt');
+            resetSteps();
+          } else {
+            console.error(e);
+            showValidation(e.message||e);
+          }
+        } finally {
+          _connecting = false;
+          setLoading(connectBtn, false);
+          connectBtn.removeEventListener('mouseenter', onEnter);
+          connectBtn.removeEventListener('mouseleave', onLeave);
+        }
+      };
+
+      // Choice toggle wiring
+      (function initChoiceToggle(){
+        const wrap = document.querySelector('.choice-toggle');
+        if (!wrap) return;
+        // create indicator
+        const indicator = document.createElement('div'); indicator.className = 'choice-indicator'; wrap.appendChild(indicator);
+        const buttons = Array.from(wrap.querySelectorAll('.choice-btn'));
+        function moveTo(btn, animate=true){
+          if (!btn) return;
+          const r = btn.getBoundingClientRect();
+          const wr = wrap.getBoundingClientRect();
+          const left = btn.offsetLeft - 4; // padding
+          const width = btn.offsetWidth;
+          if (!animate) indicator.style.transition = 'none'; else indicator.style.transition = '';
+          indicator.style.width = width + 'px';
+          indicator.style.transform = `translateX(${left}px)`;
+          // update active classes
+          buttons.forEach(b=>b.classList.toggle('active', b===btn));
+          document.getElementById('choice').value = btn.dataset.value;
+        }
+        wrap.addEventListener('click', (e)=>{
+          const btn = e.target.closest('.choice-btn');
+          if (!btn) return;
+          moveTo(btn,true);
+        });
+        // init position to active button
+        const init = buttons.find(b=>b.classList.contains('active')) || buttons[0];
+        setTimeout(()=>moveTo(init,false),10);
+        // adjust on resize
+        window.addEventListener('resize', ()=> moveTo(document.querySelector('.choice-btn.active') || init, false));
+      })();
+
+      // React to account changes
+      if (window.ethereum && window.ethereum.on) {
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (accounts && accounts.length > 0) {
+            address = accounts[0];
+            addrEl.textContent = address;
+            log('Account changed', address);
+          } else {
+            address = null;
+            addrEl.textContent = 'Not connected';
+            log('No accounts available');
+          }
+        });
+      }
+
+      fetchKeyBtn.onclick = async ()=>{
+        try{
+          const tries = [];
+          const user = backendUrlInput.value.trim();
+          if (user) tries.push(user);
+          tries.push('http://127.0.0.1:3001');
+          tries.push(window.location.origin);
+
+          let pk = null;
+          for (const base of tries) {
+            if (!base) continue;
+            try {
+              const url = new URL('/publicKey', base).toString();
+              log('Trying public key at', url);
+              const res = await fetch(url);
+              if (!res.ok) { log('no key at', url, 'status', res.status); continue; }
+              const j = await res.json();
+              if (j && j.publicKey) { pk = j.publicKey; backendUrlInput.value = base; break; }
+            } catch(err) {
+              log('fetch error at', base, err.message || err);
+            }
+          }
+          if (!pk) { showValidation('Could not fetch public key from backend; set Backend URL to your running backend (e.g. http://127.0.0.1:3001)'); return; }
+          try {
+            pubkeyEl.value = JSON.stringify(pk, null, 2);
+            pubkeyEl.title = 'Full public key JSON';
+          } catch (e) {
+            pubkeyEl.textContent = 'n=' + pk.n.slice(0,8) + '…';
+            pubkeyEl.title = JSON.stringify(pk);
+          }
+          window.__PUBLIC_KEY = pk;
+          voteBtn.disabled = false;
+          setStep(2,'done');
+          setStep(3,'active');
+          log('Loaded public key (n length):', pk.n.length);
+
+          // Try to auto-fill contract address from backend config (optional)
+          try {
+            const cfgUrl = new URL('/config', backendUrlInput.value.trim() || 'http://127.0.0.1:3001').toString();
+            const cfgRes = await fetch(cfgUrl);
+            if (cfgRes.ok) {
+              const cj = await cfgRes.json();
+              if (cj && cj.votingContractAddress && !contractInput.value.trim()) {
+                setContractInputFromFull(cj.votingContractAddress);
+                // normalize the filled address (strip 0x, whitespace, lowercase) and update status
+                try { normalizeContractInput(); } catch(e) {}
+                log('Auto-filled contract address from backend config');
+              }
+            }
+          } catch (e) {
+            // non-fatal
+          }
+              // update window status UI after loading key/config
+              try{ updateWindowStatus(getFullContractAddress()); }catch(e){}
+        }catch(e){ console.error(e); showValidation(e.message||e); }
+      };
+
+          async function updateWindowStatus(contractAddr){
+            try{
+              let localText = 'No local window';
+              const localW = JSON.parse(localStorage.getItem('votingWindow')||'null');
+              if (localW && localW.start && localW.end){
+                localText = `Local window: ${new Date(localW.start).toLocaleString()} → ${new Date(localW.end).toLocaleString()}`;
+              }
+              let chainText = 'On-chain: unknown';
+              if (isHexAddress(contractAddr)){
+                try{
+                  const STATUS_ABI = ['function startTime() view returns (uint256)', 'function endTime() view returns (uint256)'];
+                  // choose a read-only provider: prefer connected provider, then window.ethereum, then Sepolia default
+                  let readProvider = provider || null;
+                  try {
+                    if (!readProvider && window.ethereum && window.ethereum.request) {
+                      readProvider = new ethers.providers.Web3Provider(window.ethereum);
+                    }
+                  } catch(e) { /* ignore */ }
+                  if (!readProvider) {
+                    try {
+                      readProvider = ethers.getDefaultProvider('sepolia');
+                    } catch(e) {
+                      // fallback to a public JSON-RPC endpoint if default provider isn't configured
+                      readProvider = new ethers.providers.JsonRpcProvider('https://rpc.sepolia.org');
+                    }
+                  }
+
+                  // try to detect contract code; if the provider fails, try a fallback RPC provider
+                  let code = null;
+                  try { code = await readProvider.getCode(contractAddr); } catch(e) { code = null; }
+                  if (!code || code === '0x' || code === '0x0') {
+                    // try a public RPC fallback once
+                    try {
+                      const fallback = new ethers.providers.JsonRpcProvider('https://rpc.sepolia.org');
+                      const fbCode = await fallback.getCode(contractAddr);
+                      if (fbCode && fbCode !== '0x' && fbCode !== '0x0') {
+                        readProvider = fallback; code = fbCode;
+                      }
+                    } catch(e) { /* ignore */ }
+                    if (!code || code === '0x' || code === '0x0') {
+                      chainText = 'On-chain: (no contract at address)';
+                      if (windowStatusEl) windowStatusEl.textContent = localText + ' • ' + chainText;
+                      return;
+                    }
+                  }
+
+                  const status = new ethers.Contract(contractAddr, STATUS_ABI, readProvider);
+                  const s = await status.startTime(); const e = await status.endTime();
+                  // detect whether the on-chain window is currently open
+                  try {
+                    const sNum = Number(s.toString());
+                    const eNum = Number(e.toString());
+                    let nowNum = null;
+                    try { const blk = await (provider || ethers.getDefaultProvider()).getBlock('latest'); nowNum = Number(blk.timestamp); } catch(_) { nowNum = Math.floor(Date.now()/1000); }
+                    // Allow forcing an "open" on-chain window for testing via URL param
+                    const params = new URLSearchParams(window.location.search || '');
+                    const forceOnChain = params.get('forceOnChainWindow') === 'true';
+                    if (forceOnChain) {
+                      const now = Math.floor(Date.now()/1000);
+                      const sForced = now - 24*60*60; // yesterday
+                      const eForced = now + 24*60*60; // tomorrow
+                      chainText = `On-chain: OPEN — ends ${new Date(eForced * 1000).toLocaleString()} (forced)`;
+                      console.log(1);
+                      
+                    } else if (nowNum >= sNum && nowNum <= eNum) {
+                      chainText = `On-chain: OPEN — ends ${new Date(eNum * 1000).toLocaleString()}`;
+                      console.log(2);
+
+                    } else {
+                      chainText = `On-chain: ${new Date(sNum*1000).toLocaleString()} → ${new Date(eNum*1000).toLocaleString()}`;
+                    }
+                  } catch(e) {
+                    chainText = `On-chain: ${new Date(Number(s.toString())*1000).toLocaleString()} → ${new Date(Number(e.toString())*1000).toLocaleString()}`;
+                  }
+                }catch(e){ chainText = 'On-chain: unavailable'; }
+              }else{
+                chainText = 'On-chain: (invalid contract)';
+              }
+              if (windowStatusEl) windowStatusEl.textContent = localText + ' • ' + chainText;
+            }catch(e){ if(windowStatusEl) windowStatusEl.textContent = 'Window: unknown'; }
+          }
+
+      clearLogsBtn.onclick = ()=>{ logsEl.textContent = 'Ready.'; txList.innerHTML=''; }
+
+      
+      // normalize and react to contract input changes
+      function normalizeContractInput(){
+        try{
+          let raw = (contractInput.value || '').trim();
+          // remove 0x prefix if present, remove whitespace and lowercase
+          raw = raw.replace(/^0x/i,'').replace(/\s+/g,'').toLowerCase();
+          contractInput.value = raw;
+          updateWindowStatus(getFullContractAddress());
+        }catch(e){ /* ignore */ }
+      }
+      try{
+        contractInput.addEventListener('input', ()=> updateWindowStatus(getFullContractAddress()));
+        contractInput.addEventListener('blur', normalizeContractInput);
+        contractInput.addEventListener('paste', ()=> setTimeout(normalizeContractInput, 50));
+      }catch(e){}
+      // initial status update
+      setTimeout(()=>{ try{ updateWindowStatus(getFullContractAddress()); }catch(e){} }, 400);
+
+      voteBtn.onclick = async ()=>{
+        try{
+          if (!validateBeforeSubmit()) return;
+          setLoading(voteBtn, true, 'Encrypting...');
+          setStep(3,'active');
+
+          const contractAddr = getFullContractAddress();
+          const pub = window.__PUBLIC_KEY;
+
+          const bal = await provider.getBalance(address);
+          const balBig = BigInt(bal.toString());
+          log('Balance (wei):', balBig.toString());
+
+          const choice = document.getElementById('choice').value;
+          const SHIFT = 128n;
+          let encoded = (choice==='for') ? (balBig << SHIFT) : balBig;
+
+          // encrypt (local paillier implementation)
+          log('Encrypting vote...');
+          const ciphertextBig = paillierEncrypt(pub, encoded);
+          // hex must be even-length; pad with leading zero if necessary
+          let hexBody = ciphertextBig.toString(16);
+          if (hexBody.length % 2 === 1) hexBody = '0' + hexBody;
+          const hex = '0x' + hexBody;
+          log('Encrypted (hex start):', hex.slice(0,32)+'...');
+
+          setStep(3,'done');
+          setStep(4,'active');
+          setLoading(voteBtn, true, 'Submitting...');
+
+          const VOTING_ABI = ['function submitVote(bytes)'];
+          const contract = new ethers.Contract(contractAddr, VOTING_ABI, signer);
+          // ensure the address is a contract (avoid sending data to EOAs)
+          const ok = await isContractAddress(contractAddr);
+          if (!ok) {
+            showValidation('Target address has no contract code. Please deploy the voting contract or use the correct contract address.');
+            setLoading(voteBtn, false);
+            return;
+          }
+          // check voting window and whether user already voted
+          try {
+            const STATUS_ABI = ['function startTime() view returns (uint256)', 'function endTime() view returns (uint256)', 'function voted(address) view returns (bool)'];
+            const status = new ethers.Contract(contractAddr, STATUS_ABI, provider);
+
+            // Prefer a locally published voting window (from manage.html) if present in localStorage.
+            // local window format: { start: ISOString, end: ISOString, contract: optional }
+            let start, end, nowTs;
+            try {
+              const localW = JSON.parse(localStorage.getItem('votingWindow') || 'null');
+              if (localW && localW.start && localW.end) {
+                start = BigInt(Math.floor(new Date(localW.start).getTime() / 1000));
+                end = BigInt(Math.floor(new Date(localW.end).getTime() / 1000));
+                nowTs = BigInt(Math.floor(Date.now() / 1000));
+                // If the manager published a contract address and user hasn't filled it, prefill it
+                try { if (localW.contract && !contractInput.value.trim()) setContractInputFromFull(localW.contract); } catch(e){}
+              }
+            } catch(e){ /* ignore parse errors */ }
+
+            // If no local window, fall back to on-chain times
+            if (start === undefined || end === undefined) {
+              // fetch on-chain times
+              start = BigInt((await status.startTime()).toString());
+              end = BigInt((await status.endTime()).toString());
+              const blk = await provider.getBlock('latest');
+              nowTs = BigInt(blk.timestamp);
+              // allow overriding to yesterday->tomorrow for local testing via URL param
+              try {
+                const params = new URLSearchParams(window.location.search || '');
+                if (params.get('forceOnChainWindow') === 'true') {
+                  const now = Math.floor(Date.now()/1000);
+                  start = BigInt(now - 24*60*60);
+                  end = BigInt(now + 24*60*60);
+                  nowTs = BigInt(now);
+                  log('Using forced on-chain window (yesterday→tomorrow) for testing');
+                }
+              } catch(e) { /* ignore */ }
+            }
+
+            if (nowTs < start || nowTs > end) {
+              showValidation('Voting is currently closed (not within start/end times).');
+              setLoading(voteBtn, false);
+              return;
+            }
+
+            const already = await status.voted(address);
+            if (already) {
+              showValidation('You have already voted.');
+              setLoading(voteBtn, false);
+              try { setLoading(forceSendBtn, false); forceSendBtn.style.display = 'none'; } catch(e){}
+              try { setStep(3,'done'); } catch(e){}
+              return;
+            }
+          } catch (err) {
+            log('Could not read contract status:', err && err.message ? err.message : err);
+          }
+          // try estimating gas so MetaMask doesn't show ambiguous error
+          try {
+            await contract.estimateGas.submitVote(hex);
+          } catch (estErr) {
+            log('Gas estimation failed:', estErr && estErr.message ? estErr.message : estErr);
+            // If the on-chain contract reverted due to 'voting closed' but a local voting window exists and allows now,
+            // offer the user a manual "Force Send" button to submit with an explicit gasLimit.
+            let localAllowed = false;
+            try {
+              const localW = JSON.parse(localStorage.getItem('votingWindow') || 'null');
+              if (localW && localW.start && localW.end) {
+                const startL = Math.floor(new Date(localW.start).getTime()/1000);
+                const endL = Math.floor(new Date(localW.end).getTime()/1000);
+                const nowL = Math.floor(Date.now()/1000);
+                if (nowL >= startL && nowL <= endL) localAllowed = true;
+              }
+            } catch(e){ /* ignore */ }
+
+            // build a reliable text message from possible error shapes
+            let estMsg = '';
+            try {
+              if (estErr && estErr.message) estMsg = estErr.message;
+              else if (estErr && estErr.error && estErr.error.message) estMsg = estErr.error.message;
+              else if (estErr && estErr.reason) estMsg = estErr.reason;
+              else estMsg = JSON.stringify(estErr);
+            } catch(e){ estMsg = String(estErr); }
+            if (localAllowed && /voting closed/i.test(estMsg)) {
+              showValidation('Gas estimation failed due to on-chain voting closed — but local window is open. Click Force Send to proceed (may revert).', 'warn', 4000);
+              try { forceSendBtn.style.display = 'inline-block'; } catch(e){}
+              // wire one-time click handler
+              forceSendBtn.onclick = async ()=>{
+                try {
+                  forceSendBtn.disabled = true; setLoading(forceSendBtn, true, 'Sending...');
+                  const txf = await contract.submitVote(hex, { gasLimit: 9000000 });
+                  addTx({label:'submitVote - submitted (force)', hash:txf.hash, type:'info'});
+                  log('Force-submitted tx', txf.hash);
+                  await txf.wait();
+                  addTx({label:'submitVote - mined (force)', hash:txf.hash, type:'success'});
+                  log('Force transaction mined', txf.hash);
+                  setStep(4,'done');
+                } catch (fErr) {
+                  log('Force send failed:', fErr && fErr.message ? fErr.message : fErr);
+                  showValidation((fErr && fErr.message) ? fErr.message : 'Force send failed');
+                } finally {
+                  setLoading(forceSendBtn, false); forceSendBtn.disabled = false; forceSendBtn.style.display='none';
+                }
+              };
+              setLoading(voteBtn, false);
+              return;
+            }
+
+            showValidation('Gas estimation failed — transaction would likely revert. Check contract state (voting window, eligibility) and contract address.');
+            setLoading(voteBtn, false);
+            return;
+          }
+          let tx;
+          try {
+            tx = await contract.submitVote(hex, { gasLimit: 9000000 });
+          } catch (err) {
+            const msg = (err && err.message) ? err.message : String(err);
+            if (/cannot include data|cannot send data|non-contract account|no contract/i.test(msg)) {
+              showValidation('Submission failed: target address is not a contract or rejects data. Check contract address.');
+            } else {
+              showValidation(msg);
+            }
+            setLoading(voteBtn, false);
+            return;
+          }
+          addTx({label:'submitVote - submitted', hash:tx.hash, type:'info'});
+          log('Submitted tx', tx.hash);
+          await tx.wait();
+          addTx({label:'submitVote - mined', hash:tx.hash, type:'success'});
+          log('Transaction mined', tx.hash);
+          setLoading(voteBtn, false);
+          setStep(4,'done');
+        }catch(e){ console.error(e); showValidation(e.message||e); setLoading(voteBtn, false); }
+      };
+
+      finalizeBtn.onclick = async ()=>{
+        try{
+          const base = backendUrlInput.value.trim();
+          if (!base) { showValidation('Set backend URL (e.g. http://127.0.0.1:3001)'); return; }
+          const url = new URL('/aggregate-and-finalize', base).toString();
+          log('Calling backend finalize at', url);
+          setLoading(finalizeBtn, true, 'Finalizing...');
+          const res = await fetch(url, { method:'POST' });
+          const ct = res.headers.get('content-type') || '';
+          if (!res.ok) {
+            // try to show server error text (HTML or plain)
+            const text = await res.text();
+            log('Server returned error status', res.status, text.slice(0,800));
+            showValidation('Finalize failed: ' + (text || ('status ' + res.status)));
+            setLoading(finalizeBtn, false);
+            return;
+          }
+          if (ct.includes('application/json')) {
+            const j = await res.json();
+            log('Finalize result:', j);
+            showValidation('Finalize succeeded: ' + JSON.stringify(j), 'info');
+            setStep(4,'done');
+          } else {
+            const text = await res.text();
+            log('Finalize returned non-JSON response:', text.slice(0,1000));
+            showValidation('Finalize returned non-JSON response; check backend logs');
+          }
+          setLoading(finalizeBtn, false);
+        }catch(e){ console.error(e); showValidation(e.message||e); setLoading(finalizeBtn, false); }
+      };
+    </script>
+  </body>
+</html>
